@@ -1,7 +1,7 @@
 ---
 title: "Computational Drug Discovery S01E01"
 author: "Nacho Garcia"
-date: "9/4/2019"
+date: "10/09/2019"
 output: pdf_document
 ---
 
@@ -9,7 +9,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Loading libraries
+## Libraries
 We will use **Rcpi and rcdk** to transform the SMILES into Chemical descriptors, **keras/tensorflow** for the ML part and **ggplot2** for plotting.   
 
 ```{r message=FALSE}
@@ -22,7 +22,7 @@ library(ggplot2)
 ## Declaration of functions
 We create the function *scale.db* to standarize new data based on old data. This makes different datasets comparable. 
 
-```{r}
+```{r eval = FALSE}
 #Standarize based on previous data
 scale.db<-function(df.new, df.old){
   if(ncol(df.new)!=ncol(df.old)) print("Error number of columns!")
@@ -36,7 +36,7 @@ scale.db<-function(df.new, df.old){
 ## Folder assignement. 
 We define where our training data is (*SMILES_Activity.csv*) and our problem data is. 
 
-```{r}
+```{r eval = FALSE}
 #Folders
 path<-"/home/nacho/StatisticalCodingClub/SMILES_Activity.csv"
 pathDB<-"/home/nacho/StatisticalCodingClub/ZINCDB/"
@@ -56,7 +56,7 @@ descs <- extractDrugAIO(mols,  silent=FALSE)
 ## Checkpoint 
 It is possible to save time by saving and loading the descriptors of the training dataset 
 
-```{r}
+```{r eval = FALSE}
 #Checkpoint
 #write.csv(desc, "/home/nacho/StatisticalCodingClub/parameters.csv")
 desc<-read.csv("/home/nacho/StatisticalCodingClub/parameters.csv")
@@ -65,7 +65,7 @@ desc<-read.csv("/home/nacho/StatisticalCodingClub/parameters.csv")
 ## Data cleaning
 We need to remove columns with *NA* values or with only one value
 
-```{r}
+```{r eval = FALSE}
 #Automatic cleaning
 desc$X<-NULL
 
@@ -78,7 +78,7 @@ desc<-desc[,which(findIdentical!=0)]
 
 and other "problematic" columns (You can find those out after loading the drugs to evaluate)
 
-```{r}
+```{r eval = FALSE}
 #Manual cleaning
 desc$khs.tCH<-NULL
 desc$C2SP1<-NULL
@@ -89,9 +89,9 @@ desc$C2SP1<-NULL
 By standarizing the data we force the mean of the data to be 0 and the standard deviation to be 1 (aka as Z score). 
 By normalizing the data we force the values to range between 0 and 1
 
-$ Z_i= \frac{X_i-\mu(X)}{\sigma(X)}$
+$$ Z_i= \frac{X_i-\mu(X)}{\sigma(X)}$$
 
-$ N_i = \frac{X_i-min(X)}{max(X)-min(X)}$
+$$ N_i = \frac{X_i-min(X)}{max(X)-min(X)}$$
 
 ```{r eval = FALSE}
 x<-scale(desc)
@@ -124,7 +124,7 @@ y<-y[-val.ID]
 
 Here we declare the model using keras_model_sequential() and we add layers using the pipeline opperator %>% (Shortcut: Ctrl+M)
 
-```{r}
+```{r eval = FALSE}
 model<-keras_model_sequential()
 
 model %>% layer_dense(units = 80, activation = "relu",  input_shape = (ncol(x))) %>% 
@@ -137,13 +137,13 @@ summary(model)
 
 We then need to compile the model defining the optimizer and the loss function
 
-```{r}
+```{r eval = FALSE}
 compile(model, optimizer = "adagrad", loss = "mean_absolute_error")
 ```
 
 And we train the model
 
-```{r}
+```{r eval = FALSE}
 history<-model %>% fit(x=x,
                        y=y,
                        validation_data=list(x.val, y.val),
@@ -155,7 +155,7 @@ plot(history)
 
 To check the performance of the model we predict the activity from the validation set and we compare them with the real activity.
 
-```{r}
+```{r eval = FALSE}
 #Prediction over validation
 
 y.hat<-predict(model, x.val)
@@ -172,7 +172,7 @@ ggplot()+
 
 In order to optimize the model we search for hyperparameters to find the architecture/parameters that perform better. There are several ways to do it in Keras but we are going to use a loop that randomly takes certain parameters.
 
-```{r}
+```{r eval = FALSE}
 #Optimization
 reset_states(model)
 rounds<-100
@@ -183,7 +183,7 @@ colnames(models)<-c("UnitsL1", "UnitsL2", "UnitsL3", "act", "L1.norm", "L2.norm"
 
 We create a dataframe (models) to store all the information about the different parameters used.
 
-```{r}
+```{r eval = FALSE}
 for (i in 1:rounds) {
 
   #Hyperparams
@@ -234,7 +234,7 @@ for (i in 1:rounds) {
 
 And we select the best model to evaluate its performace on the validation dataset.
 
-```{r}
+```{r eval = FALSE}
 #Validation best performer
 models<-models[complete.cases(models),]
 unitsL1<- models$UnitsL1[models$MSE==min(models$MSE)]
@@ -279,7 +279,7 @@ ggplot()+
 
 Now that we have established a trained the best model we are going to find the activity values of some unknown compounds.
 
-```{r}
+```{r eval = FALSE}
 #Screening
 db.completed<-vector()
 db<-list.files(pathDB)
@@ -287,4 +287,50 @@ db.toprocess<-setdiff(db,db.completed)
 if(length(db.toprocess>0)) continue=TRUE
 ```
 
-We check and load the files in the pathDB one by one. Once the file is processed it is not going to be processed anymore. By adding the name of the file to the db.completed folder. In this way the model never stops while there are files to process. 
+We check and load the files in the pathDB one by one. Once a file is processed it is not going to be processed anymore because we add the name of the file to the db.completed folder. In this way the model never stops while there are files to process and new files can be added *on the fly*
+
+```{r eval = FALSE}
+while (continue) {
+
+  batchsize<-10000
+  batch.vector<-c(1,batchsize)
+  
+  smi.db<-read.csv(paste(pathDB,db.toprocess[1],sep=""), sep = " ", head=FALSE)
+  db.completed[length(db.completed)+1]<-db.toprocess[1]
+
+while(nrow(smi.db)>batch.vector[2]){
+  mols.db <- sapply(as.character(smi.db$V1[batch.vector[1]:batch.vector[2]]), parse.smiles)  
+  descs.db <- extractDrugAIO(mols.db,  silent=FALSE)
+  findNA<-apply(descs.db, 2, anyNA)
+  descs.db<-descs.db[,which(findNA==FALSE)]
+  desc.in.model<-colnames(desc)
+  descs.db<-descs.db[,which(names(descs.db) %in% desc.in.model)]
+  
+  descs.db<-scale.db(descs.db,desc)
+  
+  predicted.act<-predict(model.best, descs.db)
+  
+  if(!exists("activity.db")) 
+   {activity.db<- predicted.act}
+  else{ activity.db<-c(activity.db, predicted.act)}
+  
+  
+  print(paste(batch.vector[2],"samples analyzed"))
+  batch.vector[1]<-sum(batch.vector)
+  batch.vector[2]<-batch.vector[2]+batchsize
+  if(batch.vector[2]>nrow(smi.db)) batch.vector[2]<-nrow(smi.db)
+  
+}
+
+if(!exists("compound.db")) 
+{compound.db<- smi.db$V2}
+else{ compound.db<-c(compound.db, smi.db$V2)}   
+  
+db.toprocess<-setdiff(db,db.completed)  
+if(length(db.toprocess==0)) continue==FALSE  
+  
+} 
+  
+```
+
+This part loads the files in batches because the parse.smiles function collapses if very large sets of SMILES are processed. 

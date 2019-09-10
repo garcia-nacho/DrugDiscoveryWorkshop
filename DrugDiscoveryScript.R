@@ -210,7 +210,6 @@ while (continue) {
 while(nrow(smi.db)>batch.vector[2]){
   mols.db <- sapply(as.character(smi.db$V1[batch.vector[1]:batch.vector[2]]), parse.smiles)  
   descs.db <- extractDrugAIO(mols.db,  silent=FALSE)
-  descs.db<-read.csv("/home/nacho/StatisticalCodingClub/desc.db.csv")
   findNA<-apply(descs.db, 2, anyNA)
   descs.db<-descs.db[,which(findNA==FALSE)]
   desc.in.model<-colnames(desc)
@@ -218,13 +217,13 @@ while(nrow(smi.db)>batch.vector[2]){
   
   descs.db<-scale.db(descs.db,desc)
   
-  
   predicted.act<-predict(model.best, descs.db)
   
   if(!exists("activity.db")) 
    {activity.db<- predicted.act}
   else{ activity.db<-c(activity.db, predicted.act)}
-   
+  
+  
   print(paste(batch.vector[2],"samples analyzed"))
   batch.vector[1]<-sum(batch.vector)
   batch.vector[2]<-batch.vector[2]+batchsize
@@ -232,19 +231,12 @@ while(nrow(smi.db)>batch.vector[2]){
   
 }
 
+if(!exists("compound.db")) 
+{compound.db<- smi.db$V2}
+else{ compound.db<-c(compound.db, smi.db$V2)}   
   
-  ggplot()+
-    geom_point(data=desc,aes(desc[,25],desc$apol),colour="red")+
-    geom_point(data=descs.db,aes(descs.db[,25],descs.db$apol),colour="blue",alpha=0.1)
-  
-
-
-
-
-
-
-
-if(length(db.toprocess==1)) continue==FALSE  
+db.toprocess<-setdiff(db,db.completed)  
+if(length(db.toprocess==0)) continue==FALSE  
   
 } 
   
