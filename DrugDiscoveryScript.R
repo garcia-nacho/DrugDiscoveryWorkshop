@@ -4,7 +4,7 @@ library(rcdk)
 library(keras)
 library(ggplot2)
 
-
+start.time<-Sys.time()
 #Function declaration
 
 #Standarize based on previous data
@@ -17,17 +17,17 @@ scale.db<-function(df.new, df.old){
 }
 
 #Folders
-path<-"/home/nacho/StatisticalCodingClub/SMILES_Activity.csv"
-pathDB<-"/home/nacho/StatisticalCodingClub/ZINCDB/"
+path<-"C:/Users/AutophagyCrusher/Documents/DrugDiscoveryWorkshop-master/SMILES_Activity.csv"
+pathDB<-"C:/Users/AutophagyCrusher/Documents/DrugDiscoveryWorkshop-master/ZINCDB/"
 
 #Loading and descriptors calculation
 df<-read.csv(path)
 mols <- sapply(as.character(df$SMILE), parse.smiles)
-descs <- extractDrugAIO(mols,  silent=FALSE)
+desc <- extractDrugAIO(mols,  silent=FALSE)
 
 #Checkpoint
 #write.csv(desc, "/home/nacho/StatisticalCodingClub/parameters.csv")
-desc<-read.csv("/home/nacho/StatisticalCodingClub/parameters.csv")
+#desc<-read.csv("/home/nacho/StatisticalCodingClub/parameters.csv")
 
 #Automatic cleaning
 desc$X<-NULL
@@ -39,8 +39,22 @@ findIdentical<- apply(desc, 2, sd)
 desc<-desc[,which(findIdentical!=0)]
 
 #Manual cleaning
-desc$khs.tCH<-NULL
-desc$C2SP1<-NULL
+to.remove<-c("ATSc1",
+             "ATSc2",
+             "ATSc3",
+             "ATSc4",
+             "ATSc5",
+             "BCUTw.1l",
+             "BCUTw.1h",
+             "BCUTc.1l",
+             "BCUTc.1h",
+             "BCUTp.1l",
+             "BCUTp.1h",
+             "khs.tCH",
+             "C2SP1")
+
+`%!in%` = Negate(`%in%`)
+desc<-desc[,which(names(desc) %!in% to.remove)]
 
 x<-scale(desc)
 # normalize <- function(x) {
@@ -212,8 +226,13 @@ while(nrow(smi.db)>batch.vector[2]){
   descs.db <- extractDrugAIO(mols.db,  silent=FALSE)
   findNA<-apply(descs.db, 2, anyNA)
   descs.db<-descs.db[,which(findNA==FALSE)]
+  descs.db$khs.tCH<-NULL
+  desc.db$C2SP1<-NULL
   desc.in.model<-colnames(desc)
   descs.db<-descs.db[,which(names(descs.db) %in% desc.in.model)]
+  #Manual cleaning
+
+  
   
   descs.db<-scale.db(descs.db,desc)
   
@@ -224,7 +243,7 @@ while(nrow(smi.db)>batch.vector[2]){
   else{ activity.db<-c(activity.db, predicted.act)}
   
   
-  print(paste(batch.vector[2],"samples analyzed"))
+  
   batch.vector[1]<-sum(batch.vector)
   batch.vector[2]<-batch.vector[2]+batchsize
   if(batch.vector[2]>nrow(smi.db)) batch.vector[2]<-nrow(smi.db)
@@ -241,8 +260,9 @@ if(length(db.toprocess==0)) continue==FALSE
 } 
   
 
+end.time<-Sys.time()
 
-
+print(end.time-start.time)
 
 
 
