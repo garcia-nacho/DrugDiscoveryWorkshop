@@ -3,7 +3,7 @@
 Materials for the workshop in computational drug discovery
 
 
-# File and folder description
+# File description
 
 *ZINCDB*: Folder containing two samples donwload from [ZINC15](https://zinc15.docking.org/)   
 *DrugDiscoveryScript.R*: Script to perform the end-to-end search for new active compounds based on a training set   
