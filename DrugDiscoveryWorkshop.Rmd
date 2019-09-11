@@ -1,7 +1,7 @@
 ---
 title: "Computational Drug Discovery S01E01"
 author: "Nacho Garcia"
-date: "10/09/2019"
+date: "12/09/2019"
 output: pdf_document
 ---
 
@@ -20,7 +20,7 @@ library(ggplot2)
 ```
 
 ## Declaration of functions
-We create the function *scale.db* to standarize new data based on old data. This makes different datasets comparable. 
+We create the function *scale.db* to standardize new data based on old data. This makes different datasets comparable. 
 
 ```{r eval = FALSE}
 #Standarize based on previous data
@@ -33,14 +33,13 @@ scale.db<-function(df.new, df.old){
 }
 ```
 
-## Folder assignement. 
-We define where our training data is (*SMILES_Activity.csv*) and our problem data is. 
+## Folder assignment
+We define where our training data is (*SMILES_Activity.csv*) and our problem data is (ZINCDB folder). 
 
 ```{r eval = FALSE}
 #Folders
 path<-"/home/nacho/StatisticalCodingClub/SMILES_Activity.csv"
 pathDB<-"/home/nacho/StatisticalCodingClub/ZINCDB/"
-
 ```
 
 ## Descriptor calculation
@@ -50,7 +49,7 @@ We use the functions *parse.smiles* to create a list and we extract the descript
 #Loading and descriptors calculation
 df <- read.csv(path)
 mols <- sapply(as.character(df$SMILE), parse.smiles)
-descs <- extractDrugAIO(mols,  silent=FALSE)
+desc <- extractDrugAIO(mols,  silent=FALSE)
 ```
 
 ## Checkpoint 
@@ -80,14 +79,27 @@ and other "problematic" columns (You can find those out after loading the drugs 
 
 ```{r eval = FALSE}
 #Manual cleaning
-desc$khs.tCH<-NULL
-desc$C2SP1<-NULL
+to.remove<-c("ATSc1",
+             "ATSc2",
+             "ATSc3",
+             "ATSc4",
+             "ATSc5",
+             "BCUTw.1l",
+             "BCUTw.1h",
+             "BCUTc.1l",
+             "BCUTc.1h",
+             "BCUTp.1l",
+             "BCUTp.1h",
+             "khs.tCH",
+             "C2SP1")
+
+`%!in%` = Negate(`%in%`)
+desc<-desc[,which(names(desc) %!in% to.remove)]
 ```
 
 ## Data standarization (or normalization)
-
-By standarizing the data we force the mean of the data to be 0 and the standard deviation to be 1 (aka as Z score). 
-By normalizing the data we force the values to range between 0 and 1
+By standardizing the data we force the mean of the data to be 0 and the standard deviation to be 1 (aka as Z score). 
+By normalizing the data we force the values to range between 0 and 1.
 
 $$ Z_i= \frac{X_i-\mu(X)}{\sigma(X)}$$
 
@@ -106,8 +118,7 @@ y<-(df$Activity-min(df$Activity))/(max(df$Activity)-min(df$Activity))
 ```
 
 ## Splitting the data into training and validating sets
-
-To how well the model generalizes we use a validation set. The model has never *seen* the SMILES from the validation set. The better the model performs in the validation set, the better it is.
+To know how well the model generalizes, we use a validation set. The model has never *seen* the SMILES from the validation set. The better the model performs in the validation set, the better it is.
 Models that perform well in the training set and bad in the validation set might suffer from overfitting.
 
 ```{r eval = FALSE}
@@ -120,9 +131,8 @@ x<-x[-val.ID,]
 y<-y[-val.ID]
 ```
 
-## Creating and training the model using Keras/Tensorflow
-
-Here we declare the model using keras_model_sequential() and we add layers using the pipeline opperator %>% (Shortcut: Ctrl+M)
+## Creating and training the model using Keras/TensorFlow
+Here we declare the model using keras_model_sequential() and we add layers using the pipeline operator %>% (Shortcut: *Ctrl+M*)
 
 ```{r eval = FALSE}
 model<-keras_model_sequential()
@@ -169,7 +179,6 @@ ggplot()+
 ```
 
 ## Model optimization
-
 In order to optimize the model we search for hyperparameters to find the architecture/parameters that perform better. There are several ways to do it in Keras but we are going to use a loop that randomly takes certain parameters.
 
 ```{r eval = FALSE}
@@ -181,7 +190,7 @@ colnames(models)<-c("UnitsL1", "UnitsL2", "UnitsL3", "act", "L1.norm", "L2.norm"
 
 ```
 
-We create a dataframe (models) to store all the information about the different parameters used.
+We create a dataframe (*models*) to store all the information about the different parameters tested.
 
 ```{r eval = FALSE}
 for (i in 1:rounds) {
@@ -232,7 +241,7 @@ for (i in 1:rounds) {
   }
 ```
 
-And we select the best model to evaluate its performace on the validation dataset.
+Then, we select the best model to evaluate its performance on the validation dataset.
 
 ```{r eval = FALSE}
 #Validation best performer
@@ -276,8 +285,7 @@ ggplot()+
 ```
 
 ## Virtual screening
-
-Now that we have established a trained the best model we are going to find the activity values of some unknown compounds.
+Now that we have established a trained a better model we are going to find the activity values for some unknown compounds.
 
 ```{r eval = FALSE}
 #Screening
@@ -287,7 +295,7 @@ db.toprocess<-setdiff(db,db.completed)
 if(length(db.toprocess>0)) continue=TRUE
 ```
 
-We check and load the files in the pathDB one by one. Once a file is processed it is not going to be processed anymore because we add the name of the file to the db.completed folder. In this way the model never stops while there are files to process and new files can be added *on the fly*
+We check and load the files in the *pathDB* one by one. Once a file is processed it is not going to be processed anymore because we add the name of the file to the db.completed folder. In this way, the model never stops while there are files to process and new files can be added *on the fly*
 
 ```{r eval = FALSE}
 while (continue) {
@@ -314,8 +322,6 @@ while(nrow(smi.db)>batch.vector[2]){
    {activity.db<- predicted.act}
   else{ activity.db<-c(activity.db, predicted.act)}
   
-  
-  print(paste(batch.vector[2],"samples analyzed"))
   batch.vector[1]<-sum(batch.vector)
   batch.vector[2]<-batch.vector[2]+batchsize
   if(batch.vector[2]>nrow(smi.db)) batch.vector[2]<-nrow(smi.db)
@@ -328,9 +334,11 @@ else{ compound.db<-c(compound.db, smi.db$V2)}
   
 db.toprocess<-setdiff(db,db.completed)  
 if(length(db.toprocess==0)) continue==FALSE  
-  
-} 
-  
+}
+
+output<-data.frame(compound.db,activity.db)
 ```
 
 This part loads the files in batches because the parse.smiles function collapses if very large sets of SMILES are processed. 
+
+The last part of the script stores the activities in a dataframe

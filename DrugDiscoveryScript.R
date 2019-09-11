@@ -258,7 +258,8 @@ db.toprocess<-setdiff(db,db.completed)
 if(length(db.toprocess==0)) continue==FALSE  
   
 } 
-  
+
+output<-data.frame(compound.db,activity.db)  
 
 end.time<-Sys.time()
 
